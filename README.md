@@ -1,58 +1,69 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Bulk CSV Import Service
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A robust Laravel backend service designed to handle large-scale CSV product imports. This application emphasizes memory optimization and defensive data validation, ensuring that massive datasets and corrupted rows can be processed without causing server crashes (OOM) or database query exceptions.
 
-## About Laravel
+## 🚀 Key Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+*   **Memory-Optimized Processing:** Utilizes `spatie/simple-excel` and PHP generators to stream files line-by-line. Combined with Laravel `LazyCollection` chunking, the server memory footprint remains flat regardless of file size.
+*   **Defensive Data Validation:** Implements in-loop validation (`Validator::make`) to catch and isolate dirty data (e.g., missing fields, incorrect data types) before it reaches the database.
+*   **High-Performance Bulk Inserts:** Validated records are mapped into 2D arrays and inserted via a single `Product::insert()` query per chunk, drastically reducing database connection overhead.
+*   **Accurate Job Tracking:** Automatically tallies successful and failed records in real-time, providing immediate feedback for frontend consumption.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🛠️ Tech Stack & Architecture
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+*   **Framework:** Laravel
+*   **Package:** `spatie/simple-excel` (Powered by OpenSpout for flat-memory file streaming)
+*   **Database:** MySQL / PostgreSQL
+*   **Pattern:** Job Queues (Chunked Processing)
 
-## Learning Laravel
+## 💻 Prerequisites
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Ensure your system has the following installed:
+*   PHP 8.2+
+*   Composer
+*   MySQL 8.0+ or PostgreSQL
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## ⚙️ Installation & Setup
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+1. **Install dependencies:**
+   ```bash
+   composer install
+   ```
 
-## Agentic Development
+2. **Configure your environment:**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+   Update your `.env` file with your database credentials. 
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+3. **Run migrations:**
+   ```bash
+   php artisan migrate
+   ```
 
-```bash
-composer require laravel/boost --dev
+## ⚠️ Important Configuration: The Queue Driver
 
-php artisan boost:install
+By default, the `.env` file for this project is configured to run background jobs synchronously for ease of local testing and debugging:
+
+```env
+QUEUE_CONNECTION=sync
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+**What this means:** When you upload a CSV, the `ProcessCsvImports` job will run immediately on the main PHP thread, freezing the UI until it finishes. 
 
-## Contributing
+**For Production / Large Files:** To see the true power of the background processing, change this to a proper queue driver (like `database` or `redis`) and run a dedicated worker terminal:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```env
+QUEUE_CONNECTION=database
+```
+```bash
+php artisan queue:work
+```
 
-## Code of Conduct
+## 🧪 Chaos Testing
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This architecture is built to survive bad data. You can test its defensive capabilities by generating a dataset with intentionally corrupted rows:
+1. Navigate to the `/generate-csv` route in your browser to generate a 1,000-row file with ~10% corrupted data.
+2. Upload the file via the import endpoint.
+3. Check the database or API response: you will see the valid rows successfully inserted, the failures accurately tallied, and zero fatal crashes.
