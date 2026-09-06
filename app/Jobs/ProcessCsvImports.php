@@ -31,7 +31,9 @@ class ProcessCsvImports implements ShouldQueue
      */
     public function handle(): void
     {
-        SimpleExcelReader::create(Storage::path($this->import->file_name))->getRows()->chunk(500)->each(function ($Chunk) {
+        SimpleExcelReader::create(Storage::path($this->import->file_name))
+        ->getRows()->chunk(500)
+        ->each(function ($Chunk) {
             $this->processChunk($Chunk);
         });
         $this->import->update([
