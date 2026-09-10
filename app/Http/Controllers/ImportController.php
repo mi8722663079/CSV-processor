@@ -6,7 +6,6 @@ use App\Http\Requests\Import\Store;
 use App\Http\Resources\ImportResource;
 use App\Jobs\ProcessCsvImports;
 use App\Models\Import;
-use Illuminate\Http\Request;
 
 class ImportController extends Controller
 {
@@ -27,11 +26,11 @@ class ImportController extends Controller
     }
 
     public function show(Import $import){
-        
+
         return response()->json([
             'Import Data' => new ImportResource($import)
 
         ],200);
     }
-    
+
 }
